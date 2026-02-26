@@ -15,16 +15,9 @@
         <div class="brand__mark" aria-hidden="true">★</div>
         <div class="brand__text">
           <h1>IMDb Top 250 Finder</h1>
-          <p>Pick filters, then hit Apply to update the list.</p>
         </div>
       </div>
-
-      <div class="header__actions">
-        <div class="pill" id="statusPill">
-          <span class="dot"></span>
-          <span id="statusText">Loading dataset…</span>
-        </div>
-      </div>
+      <!-- removed status pill -->
     </div>
   </header>
 
@@ -65,8 +58,7 @@
             <span class="range__to">to</span>
             <select id="yearMaxSelect"></select>
           </div>
-
-          <p class="hint">Pick a min and/or max year, then click Apply.</p>
+          <!-- removed hint -->
         </div>
 
         <!-- Runtime buckets -->
@@ -75,7 +67,7 @@
           <div class="checks" id="runtimeChecks"></div>
         </div>
 
-        <!-- Rating (was Certificate) -->
+        <!-- Rating -->
         <div class="control">
           <label>Rating</label>
           <div class="checks" id="ratingChecks"></div>
@@ -84,7 +76,7 @@
         <!-- Apply -->
         <div class="applyBox">
           <button class="btn btn--primary" id="applyBtn" type="button" disabled>Apply Filters</button>
-          <p class="applyHint" id="applyHint" hidden>Changes selected — click <strong>Apply Filters</strong> to update results.</p>
+          <!-- removed applyHint -->
         </div>
       </div>
     </section>
@@ -103,7 +95,6 @@
 
       <div class="empty" id="emptyState" hidden>
         <h3>No matches</h3>
-        <p>Try widening your year range or selecting fewer filters.</p>
         <button class="btn" id="emptyResetBtn" type="button">Reset filters</button>
       </div>
     </section>
@@ -112,11 +103,10 @@
   <footer class="footer">
     <p>
       Dataset: <span class="mono">top_250_imdb_dataset.csv</span>
-      <span class="sep">•</span>
-      Filters apply only when you click Apply.
     </p>
   </footer>
 
-  <script src="script.js"></script>
+  <!-- renamed back to sketch.js -->
+  <script src="sketch.js"></script>
 </body>
 </html>
