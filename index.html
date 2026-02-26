@@ -1,0 +1,122 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>IMDb Top 250 — Finder</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <div class="bg"></div>
+
+  <header class="header">
+    <div class="header__inner">
+      <div class="brand">
+        <div class="brand__mark" aria-hidden="true">★</div>
+        <div class="brand__text">
+          <h1>IMDb Top 250 Finder</h1>
+          <p>Pick filters, then hit Apply to update the list.</p>
+        </div>
+      </div>
+
+      <div class="header__actions">
+        <div class="pill" id="statusPill">
+          <span class="dot"></span>
+          <span id="statusText">Loading dataset…</span>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <main class="wrap">
+    <section class="panel">
+      <div class="panel__top">
+        <h2>Preferences</h2>
+        <div class="panel__right">
+          <button class="btn btn--ghost" id="resetBtn" type="button">Reset</button>
+        </div>
+      </div>
+
+      <div class="controls">
+        <!-- Sort -->
+        <div class="control">
+          <label for="sortSelect">Sort</label>
+          <select id="sortSelect">
+            <option value="rank-asc">Rank (best → worst)</option>
+            <option value="rank-desc">Rank (worst → best)</option>
+            <option value="year-desc">Year (new → old)</option>
+            <option value="year-asc">Year (old → new)</option>
+            <option value="runtime-desc">Runtime (long → short)</option>
+            <option value="runtime-asc">Runtime (short → long)</option>
+            <option value="title-asc">Title (A → Z)</option>
+            <option value="title-desc">Title (Z → A)</option>
+          </select>
+        </div>
+
+        <!-- Year dropdowns -->
+        <div class="control control--range">
+          <div class="range__head">
+            <label>Year range</label>
+            <span class="range__value" id="yearRangeLabel">Any</span>
+          </div>
+
+          <div class="range__row">
+            <select id="yearMinSelect"></select>
+            <span class="range__to">to</span>
+            <select id="yearMaxSelect"></select>
+          </div>
+
+          <p class="hint">Pick a min and/or max year, then click Apply.</p>
+        </div>
+
+        <!-- Runtime buckets -->
+        <div class="control">
+          <label>Runtime</label>
+          <div class="checks" id="runtimeChecks"></div>
+        </div>
+
+        <!-- Rating (was Certificate) -->
+        <div class="control">
+          <label>Rating</label>
+          <div class="checks" id="ratingChecks"></div>
+        </div>
+
+        <!-- Apply -->
+        <div class="applyBox">
+          <button class="btn btn--primary" id="applyBtn" type="button" disabled>Apply Filters</button>
+          <p class="applyHint" id="applyHint" hidden>Changes selected — click <strong>Apply Filters</strong> to update results.</p>
+        </div>
+      </div>
+    </section>
+
+    <section class="results">
+      <div class="results__top">
+        <div>
+          <h2>Results</h2>
+          <p class="sub" id="resultsMeta">—</p>
+        </div>
+
+        <div class="chips" id="activeChips"></div>
+      </div>
+
+      <div class="grid" id="movieGrid"></div>
+
+      <div class="empty" id="emptyState" hidden>
+        <h3>No matches</h3>
+        <p>Try widening your year range or selecting fewer filters.</p>
+        <button class="btn" id="emptyResetBtn" type="button">Reset filters</button>
+      </div>
+    </section>
+  </main>
+
+  <footer class="footer">
+    <p>
+      Dataset: <span class="mono">top_250_imdb_dataset.csv</span>
+      <span class="sep">•</span>
+      Filters apply only when you click Apply.
+    </p>
+  </footer>
+
+  <script src="script.js"></script>
+</body>
+</html>
