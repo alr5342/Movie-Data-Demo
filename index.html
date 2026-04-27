@@ -3,91 +3,80 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>IMDb Top 250 — Finder</title>
+  <title>IMDb Top 250 — Screening Room</title>
   <link rel="stylesheet" href="style.css" />
 </head>
 <body>
-  <div class="bg"></div>
+  <div class="bg" aria-hidden="true"></div>
 
-  <header class="header">
-    <div class="header__inner">
-      <div class="brand">
-        <div class="brand__mark" aria-hidden="true">★</div>
-        <div class="brand__text">
-          <h1>IMDb Top 250 Finder</h1>
-        </div>
+  <section class="landing" id="landing">
+    <div class="landing__spotlight" aria-hidden="true"></div>
+    <div class="landing__content">
+      <div class="marquee">IMDb Top 250</div>
+      <h1>Screening Room</h1>
+      <p>Sort the films, then dim the ones you’ve already seen.</p>
+
+      <div class="landing__legend">
+        <span><i class="dot dot--glow"></i> Unwatched</span>
+        <span><i class="dot dot--dim"></i> Watched</span>
+        <span><i class="iconMini">◷</i> Length</span>
+        <span><i class="iconMini">★</i> Rating</span>
       </div>
-      <!-- removed status pill -->
+
+      <button class="enterBtn" id="enterBtn" type="button">Enter</button>
     </div>
-  </header>
+  </section>
 
   <main class="wrap">
-    <section class="panel">
+    <section class="panel controlsPanel">
       <div class="panel__top">
-        <h2>Preferences</h2>
-        <div class="panel__right">
-          <button class="btn btn--ghost" id="resetBtn" type="button">Reset</button>
-        </div>
+        <button class="btn btn--ghost" id="resetBtn" type="button">Reset</button>
       </div>
 
       <div class="controls">
-        <!-- Sort -->
         <div class="control">
-          <label for="sortSelect">Sort</label>
+          <label for="sortSelect">↕</label>
           <select id="sortSelect">
-            <option value="rank-asc">Rank (best → worst)</option>
-            <option value="rank-desc">Rank (worst → best)</option>
-            <option value="year-desc">Year (new → old)</option>
-            <option value="year-asc">Year (old → new)</option>
-            <option value="runtime-desc">Runtime (long → short)</option>
-            <option value="runtime-asc">Runtime (short → long)</option>
-            <option value="title-asc">Title (A → Z)</option>
-            <option value="title-desc">Title (Z → A)</option>
+            <option value="rank-asc"># ↑</option>
+            <option value="rank-desc"># ↓</option>
+            <option value="year-desc">Year ↓</option>
+            <option value="year-asc">Year ↑</option>
+            <option value="runtime-desc">◷ ↓</option>
+            <option value="runtime-asc">◷ ↑</option>
+            <option value="title-asc">A → Z</option>
+            <option value="title-desc">Z → A</option>
           </select>
         </div>
 
-        <!-- Year dropdowns -->
         <div class="control control--range">
           <div class="range__head">
-            <label>Year range</label>
+            <label>Year</label>
             <span class="range__value" id="yearRangeLabel">Any</span>
           </div>
-
           <div class="range__row">
             <select id="yearMinSelect"></select>
-            <span class="range__to">to</span>
+            <span class="range__to">—</span>
             <select id="yearMaxSelect"></select>
           </div>
-          <!-- removed hint -->
         </div>
 
-        <!-- Runtime buckets -->
         <div class="control">
-          <label>Runtime</label>
+          <label>◷</label>
           <div class="checks" id="runtimeChecks"></div>
         </div>
 
-        <!-- Rating -->
         <div class="control">
-          <label>Rating</label>
+          <label>★</label>
           <div class="checks" id="ratingChecks"></div>
         </div>
 
-        <!-- Apply -->
-        <div class="applyBox">
-          <button class="btn btn--primary" id="applyBtn" type="button" disabled>Apply Filters</button>
-          <!-- removed applyHint -->
-        </div>
+        <button class="btn btn--primary" id="applyBtn" type="button" disabled>Apply</button>
       </div>
     </section>
 
     <section class="results">
       <div class="results__top">
-        <div>
-          <h2>Results</h2>
-          <p class="sub" id="resultsMeta">—</p>
-        </div>
-
+        <p class="sub" id="resultsMeta">—</p>
         <div class="chips" id="activeChips"></div>
       </div>
 
@@ -95,18 +84,11 @@
 
       <div class="empty" id="emptyState" hidden>
         <h3>No matches</h3>
-        <button class="btn" id="emptyResetBtn" type="button">Reset filters</button>
+        <button class="btn" id="emptyResetBtn" type="button">Reset</button>
       </div>
     </section>
   </main>
 
-  <footer class="footer">
-    <p>
-      Dataset: <span class="mono">top_250_imdb_dataset.csv</span>
-    </p>
-  </footer>
-
-  <!-- renamed back to sketch.js -->
   <script src="sketch.js"></script>
 </body>
 </html>

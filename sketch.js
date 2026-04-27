@@ -1,18 +1,38 @@
 const CSV_PATH = "Data/top_250_imdb_dataset.csv";
 const PRESENT_YEAR = new Date().getFullYear();
 const WATCHED_KEY = "imdbTop250_watched_v1";
+const INTRO_KEY = "imdbTop250_introSeen_v1";
+
+const POSTERS = {
+  "The Shawshank Redemption": "Posters/Shawshank.jpg",
+  "The Godfather": "Posters/Godfather.jpg",
+  "The Dark Knight": "Posters/DarkKnight.jpg",
+  "The Godfather Part II": "Posters/Godfather 2.jpg"
+};
 
 const state = {
   raw: [],
   filtered: [],
-  pending: { yearMin: null, yearMax: null, runtime: new Set(), ratings: new Set(), sort: "rank-asc" },
-  applied: { yearMin: null, yearMax: null, runtime: new Set(), ratings: new Set(), sort: "rank-asc" },
+  pending: {
+    yearMin: null,
+    yearMax: null,
+    runtime: new Set(),
+    ratings: new Set(),
+    sort: "rank-asc"
+  },
+  applied: {
+    yearMin: null,
+    yearMax: null,
+    runtime: new Set(),
+    ratings: new Set(),
+    sort: "rank-asc"
+  },
   runtimeDefs: [
-    { id: "lt90", label: "< 90", min: 0, max: 89 },
-    { id: "90_120", label: "90–120", min: 90, max: 120 },
-    { id: "121_150", label: "121–150", min: 121, max: 150 },
-    { id: "151_180", label: "151–180", min: 151, max: 180 },
-    { id: "gt180", label: "> 180", min: 181, max: Infinity }
+    { id: "lt90", label: "<90", icon: "◷", min: 0, max: 89 },
+    { id: "90_120", label: "90–120", icon: "◴", min: 90, max: 120 },
+    { id: "121_150", label: "121–150", icon: "◵", min: 121, max: 150 },
+    { id: "151_180", label: "151–180", icon: "◶", min: 151, max: 180 },
+    { id: "gt180", label: "180+", icon: "◷", min: 181, max: Infinity }
   ],
   ratingOptions: [],
   watched: new Set()
@@ -27,14 +47,22 @@ async function init() {
   bindUI();
   state.watched = loadWatched();
 
+  if (localStorage.getItem(INTRO_KEY) === "yes") {
+    els.landing?.classList.add("is-hidden");
+  }
+
   try {
     const res = await fetch(CSV_PATH);
     if (!res.ok) throw new Error(`Could not load CSV (${res.status})`);
+
     const text = await res.text();
     state.raw = parseCSV(text);
+
     if (!state.raw.length) throw new Error("CSV parsed empty");
 
-    buildYears(1900, PRESENT_YEAR);
+    const minYear = Math.min(...state.raw.map(m => m.year).filter(Number.isFinite));
+
+    buildYears(minYear || 1900, PRESENT_YEAR);
     state.ratingOptions = getRatingOptions(state.raw);
     buildChecks();
 
@@ -47,6 +75,8 @@ async function init() {
 }
 
 function grabEls() {
+  els.landing = document.getElementById("landing");
+  els.enterBtn = document.getElementById("enterBtn");
   els.sortSelect = document.getElementById("sortSelect");
   els.yearMinSelect = document.getElementById("yearMinSelect");
   els.yearMaxSelect = document.getElementById("yearMaxSelect");
@@ -63,7 +93,15 @@ function grabEls() {
 }
 
 function bindUI() {
-  els.sortSelect.addEventListener("change", () => { state.pending.sort = els.sortSelect.value; setDirty(true); });
+  els.enterBtn?.addEventListener("click", () => {
+    els.landing.classList.add("is-hidden");
+    localStorage.setItem(INTRO_KEY, "yes");
+  });
+
+  els.sortSelect.addEventListener("change", () => {
+    state.pending.sort = els.sortSelect.value;
+    setDirty(true);
+  });
 
   els.yearMinSelect.addEventListener("change", () => {
     state.pending.yearMin = toIntOrNull(els.yearMinSelect.value);
@@ -97,12 +135,22 @@ function applyFilters() {
 
   let out = [...state.raw];
 
-  if (state.applied.yearMin != null) out = out.filter(m => m.year >= state.applied.yearMin);
-  if (state.applied.yearMax != null) out = out.filter(m => m.year <= state.applied.yearMax);
+  if (state.applied.yearMin != null) {
+    out = out.filter(m => m.year >= state.applied.yearMin);
+  }
+
+  if (state.applied.yearMax != null) {
+    out = out.filter(m => m.year <= state.applied.yearMax);
+  }
 
   if (state.applied.runtime.size) {
-    const buckets = [...state.applied.runtime].map(id => state.runtimeDefs.find(b => b.id === id)).filter(Boolean);
-    out = out.filter(m => buckets.some(b => m.durationMinutes >= b.min && m.durationMinutes <= b.max));
+    const buckets = [...state.applied.runtime]
+      .map(id => state.runtimeDefs.find(b => b.id === id))
+      .filter(Boolean);
+
+    out = out.filter(m =>
+      buckets.some(b => m.durationMinutes >= b.min && m.durationMinutes <= b.max)
+    );
   }
 
   if (state.applied.ratings.size) {
@@ -111,6 +159,7 @@ function applyFilters() {
 
   out.sort(sorter(state.applied.sort));
   state.filtered = out;
+
   render();
   setDirty(false);
 }
@@ -131,17 +180,21 @@ function resetAll() {
   els.sortSelect.value = "rank-asc";
   els.yearMinSelect.value = "";
   els.yearMaxSelect.value = "";
+
   updateYearLabel();
 
-  document.querySelectorAll('input[type="checkbox"]').forEach(cb => (cb.checked = false));
+  document.querySelectorAll('input[type="checkbox"]').forEach(cb => {
+    cb.checked = false;
+  });
 
   state.filtered = [...state.raw].sort(sorter("rank-asc"));
+
   render();
   setDirty(false);
 }
 
 function render() {
-  els.resultsMeta.textContent = `${state.filtered.length} of ${state.raw.length} films`;
+  els.resultsMeta.textContent = `${state.filtered.length} / ${state.raw.length}`;
   renderChips();
   renderGrid();
 }
@@ -159,27 +212,38 @@ function renderGrid() {
   for (const m of state.filtered) {
     const id = movieId(m);
     const watched = state.watched.has(id);
+    const poster = POSTERS[m.title];
 
-    const card = document.createElement("div");
+    const card = document.createElement("article");
     card.className = "card" + (watched ? " is-watched" : "");
+
+    const colors = posterColors(m);
+    card.style.setProperty("--posterA", colors.a);
+    card.style.setProperty("--posterB", colors.b);
+
+    if (poster) {
+      card.classList.add("has-poster");
+      card.style.setProperty("--posterImage", `url("${poster}")`);
+    }
 
     const eye = document.createElement("button");
     eye.className = "eyeToggle";
     eye.type = "button";
-    eye.setAttribute("aria-label", watched ? "Watched" : "Not watched");
+    eye.setAttribute("aria-label", watched ? "Mark as unwatched" : "Mark as watched");
     eye.innerHTML = watched ? eyeOpenSVG() : eyeClosedSVG();
 
     card.innerHTML = `
-      <div class="card__top">
+      <div class="poster" aria-hidden="true">
+        <span class="filmHoles"></span>
+        <span class="rank">#${m.rank}</span>
         <div>
-          <div class="rank">#${m.rank}</div>
           <h3 class="title">${escapeHtml(m.title)}</h3>
+          <div class="meta">
+            <span class="badge badge--strong">${m.year ?? "—"}</span>
+            <span class="badge">◷ ${m.durationMinutes ?? "—"}</span>
+            <span class="badge">★ ${escapeHtml(m.ratingLabel)}</span>
+          </div>
         </div>
-      </div>
-      <div class="meta">
-        <span class="badge badge--strong">${m.year ?? "—"}</span>
-        <span class="badge">${m.durationMinutes ?? "—"} min</span>
-        <span class="badge">${escapeHtml(m.ratingLabel)}</span>
       </div>
     `;
 
@@ -187,17 +251,26 @@ function renderGrid() {
 
     const toggle = () => {
       const now = !state.watched.has(id);
-      if (now) state.watched.add(id);
-      else state.watched.delete(id);
+
+      if (now) {
+        state.watched.add(id);
+      } else {
+        state.watched.delete(id);
+      }
+
       saveWatched(state.watched);
 
       card.classList.toggle("is-watched", now);
       eye.innerHTML = now ? eyeOpenSVG() : eyeClosedSVG();
-      eye.setAttribute("aria-label", now ? "Watched" : "Not watched");
+      eye.setAttribute("aria-label", now ? "Mark as unwatched" : "Mark as watched");
     };
 
     card.addEventListener("click", toggle);
-    eye.addEventListener("click", (e) => { e.stopPropagation(); toggle(); });
+
+    eye.addEventListener("click", (e) => {
+      e.stopPropagation();
+      toggle();
+    });
 
     els.grid.appendChild(card);
   }
@@ -205,22 +278,72 @@ function renderGrid() {
 
 function renderChips() {
   els.activeChips.innerHTML = "";
+
   const chips = [];
 
-  if (state.applied.yearMin != null) chips.push({ label: `Year ≥ ${state.applied.yearMin}`, clear: () => { state.pending.yearMin = null; state.applied.yearMin = null; els.yearMinSelect.value = ""; updateYearLabel(); } });
-  if (state.applied.yearMax != null) chips.push({ label: `Year ≤ ${state.applied.yearMax}`, clear: () => { state.pending.yearMax = null; state.applied.yearMax = null; els.yearMaxSelect.value = ""; updateYearLabel(); } });
+  if (state.applied.yearMin != null) {
+    chips.push({
+      label: `${state.applied.yearMin}+`,
+      clear: () => {
+        state.pending.yearMin = null;
+        state.applied.yearMin = null;
+        els.yearMinSelect.value = "";
+        updateYearLabel();
+      }
+    });
+  }
+
+  if (state.applied.yearMax != null) {
+    chips.push({
+      label: `≤ ${state.applied.yearMax}`,
+      clear: () => {
+        state.pending.yearMax = null;
+        state.applied.yearMax = null;
+        els.yearMaxSelect.value = "";
+        updateYearLabel();
+      }
+    });
+  }
 
   if (state.applied.runtime.size) {
-    const labels = [...state.applied.runtime].map(id => state.runtimeDefs.find(b => b.id === id)?.label).filter(Boolean);
-    chips.push({ label: `Runtime: ${labels.join(", ")}`, clear: () => { state.pending.runtime.clear(); state.applied.runtime.clear(); document.querySelectorAll('input[data-kind="runtime"]').forEach(cb => cb.checked = false); } });
+    const labels = [...state.applied.runtime]
+      .map(id => state.runtimeDefs.find(b => b.id === id)?.label)
+      .filter(Boolean);
+
+    chips.push({
+      label: `◷ ${labels.join(", ")}`,
+      clear: () => {
+        state.pending.runtime.clear();
+        state.applied.runtime.clear();
+        document.querySelectorAll('input[data-kind="runtime"]').forEach(cb => {
+          cb.checked = false;
+        });
+      }
+    });
   }
 
   if (state.applied.ratings.size) {
-    chips.push({ label: `Rating: ${[...state.applied.ratings].join(", ")}`, clear: () => { state.pending.ratings.clear(); state.applied.ratings.clear(); document.querySelectorAll('input[data-kind="rating"]').forEach(cb => cb.checked = false); } });
+    chips.push({
+      label: `★ ${[...state.applied.ratings].join(", ")}`,
+      clear: () => {
+        state.pending.ratings.clear();
+        state.applied.ratings.clear();
+        document.querySelectorAll('input[data-kind="rating"]').forEach(cb => {
+          cb.checked = false;
+        });
+      }
+    });
   }
 
   if (state.applied.sort !== "rank-asc") {
-    chips.push({ label: `Sort: ${sortLabel(state.applied.sort)}`, clear: () => { state.pending.sort = "rank-asc"; state.applied.sort = "rank-asc"; els.sortSelect.value = "rank-asc"; } });
+    chips.push({
+      label: sortLabel(state.applied.sort),
+      clear: () => {
+        state.pending.sort = "rank-asc";
+        state.applied.sort = "rank-asc";
+        els.sortSelect.value = "rank-asc";
+      }
+    });
   }
 
   for (const c of chips) {
@@ -231,7 +354,11 @@ function renderChips() {
     const btn = document.createElement("button");
     btn.type = "button";
     btn.textContent = "×";
-    btn.addEventListener("click", () => { c.clear(); applyFilters(); });
+
+    btn.addEventListener("click", () => {
+      c.clear();
+      applyFilters();
+    });
 
     chip.appendChild(btn);
     els.activeChips.appendChild(chip);
@@ -239,18 +366,21 @@ function renderChips() {
 }
 
 function buildYears(start, end) {
-  els.yearMinSelect.innerHTML = `<option value="">Min (Any)</option>`;
-  els.yearMaxSelect.innerHTML = `<option value="">Max (Any)</option>`;
+  els.yearMinSelect.innerHTML = `<option value="">From</option>`;
+  els.yearMaxSelect.innerHTML = `<option value="">To</option>`;
+
   for (let y = start; y <= end; y++) {
     els.yearMinSelect.insertAdjacentHTML("beforeend", `<option value="${y}">${y}</option>`);
     els.yearMaxSelect.insertAdjacentHTML("beforeend", `<option value="${y}">${y}</option>`);
   }
+
   updateYearLabel();
 }
 
 function clampYears() {
   const a = state.pending.yearMin;
   const b = state.pending.yearMax;
+
   if (a != null && b != null && a > b) {
     state.pending.yearMax = a;
     els.yearMaxSelect.value = String(a);
@@ -260,87 +390,120 @@ function clampYears() {
 function updateYearLabel() {
   const a = state.pending.yearMin;
   const b = state.pending.yearMax;
-  if (a == null && b == null) els.yearRangeLabel.textContent = "Any";
-  else if (a != null && b == null) els.yearRangeLabel.textContent = `${a} → Any`;
-  else if (a == null && b != null) els.yearRangeLabel.textContent = `Any → ${b}`;
-  else els.yearRangeLabel.textContent = `${a} → ${b}`;
+
+  if (a == null && b == null) {
+    els.yearRangeLabel.textContent = "Any";
+  } else if (a != null && b == null) {
+    els.yearRangeLabel.textContent = `${a}+`;
+  } else if (a == null && b != null) {
+    els.yearRangeLabel.textContent = `≤ ${b}`;
+  } else {
+    els.yearRangeLabel.textContent = `${a}–${b}`;
+  }
 }
 
 function getRatingOptions(rows) {
   const s = new Set();
   let blank = false;
+
   for (const m of rows) {
     const c = (m.certificate ?? "").trim();
-    if (!c) blank = true;
-    else s.add(c);
+
+    if (!c) {
+      blank = true;
+    } else {
+      s.add(c);
+    }
   }
+
   const arr = [...s].sort();
-  if (blank) arr.unshift("Unrated/Unknown");
+
+  if (blank) {
+    arr.unshift("Unrated/Unknown");
+  }
+
   return arr;
 }
 
 function buildChecks() {
   els.runtimeChecks.innerHTML = state.runtimeDefs.map(b => `
-    <label class="check">
+    <label class="check" title="${b.label} minutes">
       <input type="checkbox" data-kind="runtime" value="${b.id}">
-      <span>${b.label}</span>
+      <span>${b.icon} ${b.label}</span>
     </label>
   `).join("");
 
   els.ratingChecks.innerHTML = state.ratingOptions.map(r => `
-    <label class="check">
+    <label class="check" title="${escapeHtml(r)}">
       <input type="checkbox" data-kind="rating" value="${escapeHtml(r)}">
-      <span>${escapeHtml(r)}</span>
+      <span>★ ${escapeHtml(r)}</span>
     </label>
   `).join("");
 
   document.querySelectorAll('input[data-kind="runtime"]').forEach(cb => {
     cb.addEventListener("change", () => {
-      if (cb.checked) state.pending.runtime.add(cb.value);
-      else state.pending.runtime.delete(cb.value);
+      if (cb.checked) {
+        state.pending.runtime.add(cb.value);
+      } else {
+        state.pending.runtime.delete(cb.value);
+      }
+
       setDirty(true);
     });
   });
 
   document.querySelectorAll('input[data-kind="rating"]').forEach(cb => {
     cb.addEventListener("change", () => {
-      if (cb.checked) state.pending.ratings.add(cb.value);
-      else state.pending.ratings.delete(cb.value);
+      if (cb.checked) {
+        state.pending.ratings.add(cb.value);
+      } else {
+        state.pending.ratings.delete(cb.value);
+      }
+
       setDirty(true);
     });
   });
 }
 
-function sorter(mode){
-  switch(mode){
-    case "rank-desc": return (a,b) => b.rank - a.rank;
-    case "year-desc": return (a,b) => b.year - a.year;
-    case "year-asc": return (a,b) => a.year - b.year;
-    case "runtime-desc": return (a,b) => b.durationMinutes - a.durationMinutes;
-    case "runtime-asc": return (a,b) => a.durationMinutes - b.durationMinutes;
-    case "title-desc": return (a,b) => b.title.localeCompare(a.title);
-    case "title-asc": return (a,b) => a.title.localeCompare(b.title);
-    default: return (a,b) => a.rank - b.rank;
+function sorter(mode) {
+  switch(mode) {
+    case "rank-desc":
+      return (a, b) => b.rank - a.rank;
+    case "year-desc":
+      return (a, b) => b.year - a.year;
+    case "year-asc":
+      return (a, b) => a.year - b.year;
+    case "runtime-desc":
+      return (a, b) => b.durationMinutes - a.durationMinutes;
+    case "runtime-asc":
+      return (a, b) => a.durationMinutes - b.durationMinutes;
+    case "title-desc":
+      return (a, b) => b.title.localeCompare(a.title);
+    case "title-asc":
+      return (a, b) => a.title.localeCompare(b.title);
+    default:
+      return (a, b) => a.rank - b.rank;
   }
 }
 
-function sortLabel(v){
+function sortLabel(v) {
   const m = {
-    "rank-asc":"Rank (best → worst)",
-    "rank-desc":"Rank (worst → best)",
-    "year-desc":"Year (new → old)",
-    "year-asc":"Year (old → new)",
-    "runtime-desc":"Runtime (long → short)",
-    "runtime-asc":"Runtime (short → long)",
-    "title-asc":"Title (A → Z)",
-    "title-desc":"Title (Z → A)"
+    "rank-asc": "# ↑",
+    "rank-desc": "# ↓",
+    "year-desc": "Year ↓",
+    "year-asc": "Year ↑",
+    "runtime-desc": "◷ ↓",
+    "runtime-asc": "◷ ↑",
+    "title-asc": "A → Z",
+    "title-desc": "Z → A"
   };
+
   return m[v] ?? v;
 }
 
-function parseCSV(text){
+function parseCSV(text) {
   const lines = text.replace(/\r/g, "").split("\n").filter(l => l.trim());
-  const header = lines[0].split(",");
+  const header = splitCSVLine(lines[0]);
 
   const iRank = header.indexOf("Rank");
   const iTitle = header.indexOf("Title");
@@ -359,6 +522,8 @@ function parseCSV(text){
     const dur = parseInt(cols[iDur], 10);
     const cert = (cols[iCert] ?? "").trim();
 
+    if (!title) continue;
+
     out.push({
       rank,
       title,
@@ -372,21 +537,26 @@ function parseCSV(text){
   return out;
 }
 
-function splitCSVLine(line){
+function splitCSVLine(line) {
   const out = [];
   let cur = "";
   let q = false;
 
-  for (let i = 0; i < line.length; i++){
+  for (let i = 0; i < line.length; i++) {
     const ch = line[i];
 
-    if (ch === '"'){
-      if (q && line[i+1] === '"') { cur += '"'; i++; }
-      else q = !q;
+    if (ch === '"') {
+      if (q && line[i + 1] === '"') {
+        cur += '"';
+        i++;
+      } else {
+        q = !q;
+      }
+
       continue;
     }
 
-    if (ch === "," && !q){
+    if (ch === "," && !q) {
       out.push(cur);
       cur = "";
       continue;
@@ -399,30 +569,63 @@ function splitCSVLine(line){
   return out;
 }
 
-function toIntOrNull(v){
+function toIntOrNull(v) {
   if (!v) return null;
+
   const n = parseInt(v, 10);
+
   return Number.isFinite(n) ? n : null;
 }
 
-function movieId(m){
+function movieId(m) {
   return `${m.rank}|${m.title}|${m.year}`;
 }
 
-function loadWatched(){
+function loadWatched() {
   try {
     const raw = localStorage.getItem(WATCHED_KEY);
     const arr = raw ? JSON.parse(raw) : [];
+
     return new Set(Array.isArray(arr) ? arr : []);
   } catch {
     return new Set();
   }
 }
 
-function saveWatched(set){
+function saveWatched(set) {
   try {
     localStorage.setItem(WATCHED_KEY, JSON.stringify([...set]));
   } catch {}
+}
+
+function posterColors(m) {
+  const palettes = [
+    ["#39205c", "#d94f3d"],
+    ["#163b4f", "#f0a34a"],
+    ["#4a1f31", "#c73955"],
+    ["#183a2e", "#d2a84a"],
+    ["#262a5f", "#8d4de8"],
+    ["#412217", "#d56b2d"],
+    ["#22263a", "#6fb3a0"],
+    ["#541f29", "#e4bd65"]
+  ];
+
+  const p = palettes[Math.abs(hashCode(m.title)) % palettes.length];
+
+  return {
+    a: p[0],
+    b: p[1]
+  };
+}
+
+function hashCode(str) {
+  let h = 0;
+
+  for (let i = 0; i < str.length; i++) {
+    h = ((h << 5) - h) + str.charCodeAt(i) | 0;
+  }
+
+  return h;
 }
 
 function eyeOpenSVG() {
